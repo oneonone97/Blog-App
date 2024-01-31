@@ -1,0 +1,187 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Blog Website</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+
+            #blog-form {
+                max-width: 600px;
+                margin: 0 auto;
+            }
+
+            #blog-list {
+                margin-top: 20px;
+            }
+
+            .blog-item {
+                border: 1px solid #ddd;
+                padding: 10px;
+                margin-bottom: 10px;
+            }
+
+            .edit-btn,
+            .delete-btn {
+                cursor: pointer;
+                color: blue;
+                margin-right: 10px;
+            }
+
+            #counter {
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="blog-form">
+            <h2>Create a Blog</h2>
+            <form>
+                <label for="image-link">Image Link:</label>
+                <input type="text" id="image-link" required><br>
+
+                <label for="title">Title:</label>
+                <input type="text" id="title" required><br>
+
+                <label for="blog-description">Blog Description:</label>
+                <textarea id="blog-description" required></textarea><br>
+
+                <button type="button" id="post-edit-button" onclick="postBlog()">Post Blog</button>
+            </form>
+        </div>
+
+        <div id="blog-list">
+            <h2>Blog List</h2>
+            <div id="blogs"></div>
+        </div>
+
+        <div id="counter">
+            <h2>Blog Counter</h2>
+            <p id="blog-counter">0</p>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js" integrity="sha512-NQfB/bDaB8kaSXF8E77JjhHG5PM6XVRxvHzkZiwl3ddWCEPBa23T76MuWSwAJdMGJnmQqM0VeY9kFszsrBEFrQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        
+
+
+    <script>
+        let blogCounter = 0;
+        let currentEditingId = null; // Track the currently editing blog ID
+
+        async function postBlog() {
+            const imageLink = document.getElementById('image-link').value;
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('blog-description').value;
+
+            try {
+                if (currentEditingId) {
+                    // If currentEditingId is set, it means we are editing an existing blog
+                    const response = await axios.put(`https://crudcrud.com/api/5df60cf9fccc44e295b08461a7011aa6/blogs/${currentEditingId}`, {
+                        imageLink,
+                        title,
+                        description
+                    });
+
+                    if (response.status === 200) {
+                        resetForm();
+                        fetchBlogs();
+                    }
+                } else {
+                    // If currentEditingId is not set, it means we are posting a new blog
+                    const response = await axios.post('https://crudcrud.com/api/5df60cf9fccc44e295b08461a7011aa6/blogs', {
+                        imageLink,
+                        title,
+                        description
+                    });
+
+                    if (response.status === 201) {
+                        blogCounter++;
+                        document.getElementById('blog-counter').innerText = blogCounter;
+                        fetchBlogs();
+                    }
+                }
+            } catch (error) {
+                console.error('Error posting/editing blog:', error);
+            }
+        }
+
+        async function fetchBlogs() {
+            try {
+                const response = await axios.get('https://crudcrud.com/api/5df60cf9fccc44e295b08461a7011aa6/blogs');
+                const blogs = response.data;
+
+                document.getElementById('blogs').innerHTML = '';
+
+                blogs.forEach(blog => {
+                    const blogItem = document.createElement('div');
+                    blogItem.className = 'blog-item';
+
+                    const editBtn = document.createElement('span');
+                    editBtn.className = 'edit-btn';
+                    editBtn.innerText = 'Edit';
+                    editBtn.addEventListener('click', () => editBlog(blog));
+
+                    const deleteBtn = document.createElement('span');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.innerText = 'Delete';
+                    deleteBtn.addEventListener('click', () => deleteBlog(blog._id));
+
+                    blogItem.innerHTML = `<img src="${blog.imageLink}" alt="${blog.title}" style="max-width: 100%;"> 
+                                        <h3>${blog.title}</h3>
+                                        <p>${blog.description}</p>`;
+                    blogItem.appendChild(editBtn);
+                    blogItem.appendChild(deleteBtn);
+
+                    document.getElementById('blogs').appendChild(blogItem);
+                });
+            } catch (error) {
+                console.error('Error fetching blogs:', error);
+            }
+        }
+
+        function editBlog(blog) {
+            // Set the currentEditingId and populate the form fields
+            currentEditingId = blog._id;
+            document.getElementById('image-link').value = blog.imageLink;
+            document.getElementById('title').value = blog.title;
+            document.getElementById('blog-description').value = blog.description;
+
+            // Change the button text to "Edit"
+            document.getElementById('post-edit-button').innerText = 'Edit';
+        }
+
+        async function deleteBlog(blogId) {
+            try {
+                const response = await axios.delete(`https://crudcrud.com/api/5df60cf9fccc44e295b08461a7011aa6/blogs/${blogId}`);
+
+                if (response.status === 200) {
+                    blogCounter--;
+                    document.getElementById('blog-counter').innerText = blogCounter;
+                    resetForm(); // Reset the form after deleting
+                    fetchBlogs();
+                }
+            } catch (error) {
+                console.error('Error deleting blog:', error);
+            }
+        }
+
+        function resetForm() {
+            // Reset the form fields and button text
+            document.getElementById('image-link').value = '';
+            document.getElementById('title').value = '';
+            document.getElementById('blog-description').value = '';
+            document.getElementById('post-edit-button').innerText = 'Post';
+
+            // Reset the currentEditingId
+            currentEditingId = null;
+        }
+
+        fetchBlogs();
+    </script>
+
+    </body>
+    </html>
